@@ -5,45 +5,49 @@
 
 #include <sys/rctl.h>
 
+// TODO: make this dynamic
 #define RACCT_OUT_SIZE 4096
+#define PCPU_SEARCH "pcpu="
 
-int main(int argc, char *argv[]) {
-  if (argc < 2) {
-    return 2;
-  }
-  const char *rctl_spec = argv[1];
-
+long get_pcpu(const char *filter) {
   char rbuf[RACCT_OUT_SIZE];
-  int ret = rctl_get_racct(rctl_spec, strlen(rctl_spec) + 1,
+  int ret = rctl_get_racct(filter, strlen(filter) + 1,
     rbuf, RACCT_OUT_SIZE);
   if (ret != 0) {
     perror("rctl_get_racct");
-    return 1;
+    return -1;
   }
 
-  const char *c = rbuf;
-  bool done = false;
-  while (!done) {
-    const char *key = c;
-    c = strchr(key, '=');
-    if (c == NULL) {
-      fprintf(stderr, "No equals found\n");
-      return 1;
-    }
-    int keysz = c - key;
+  const char *c = strstr(rbuf, PCPU_SEARCH);
+  if (c == NULL) {
+    fprintf(stderr, "No pcpu found\n");
+    return -1;
+  }
+  c += strlen(PCPU_SEARCH);
 
-    const char *val = c + 1;
-    int valsz;
-    c = strchr(val, ',');
-    if (c == NULL) {
-      done = true;
-      valsz = strlen(val);
-    } else {
-      valsz = c - val;
-    }
-    c += 1;
+  int pcpu;
+  int scanned = sscanf(c, "%d", &pcpu);
+  if (scanned != 1) {
+    fprintf(stderr, "Failed to parse pcpu\n");
+    return -1;
+  }
+  
+  return pcpu;
+}
 
-    printf("%.*s = %.*s\n", keysz, key, valsz, val);
+int main(int argc, char *argv[]) {
+  if (argc < 2) {
+    return -2;
+  }
+  const char *filter = argv[1];
+
+  while (true) {
+    int pcpu = get_pcpu(filter);
+    if (pcpu == -1) {
+      return -1;
+    }
+    printf("%d\n", pcpu);
+    usleep(1000 * 100);
   }
 
   return 0;
