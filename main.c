@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -41,12 +42,26 @@ int main(int argc, char *argv[]) {
   }
   const char *filter = argv[1];
 
-  while (true) {
+  int size = 2;
+  int sum = 0;
+  int count = 0; 
+  int *values = calloc(size, sizeof(int));
+
+  for (long i = 0; true; i = (i + 1) % size) {
     int pcpu = get_pcpu(filter);
     if (pcpu == -1) {
       return -1;
     }
-    printf("%d\n", pcpu);
+
+    sum += pcpu - values[i];
+    values[i] = pcpu;
+    if (count < size) {
+      ++count;
+    }
+
+    int avg = sum / count;
+    printf("%d\n", avg);
+
     usleep(1000 * 100);
   }
 
